@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "java -jar app.jar",
-    "healthcheckPath": "/health",
+    "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE"
   }
 }
