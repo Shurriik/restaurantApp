@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="applicationName" source="spring.application.name" defaultValue="restaurant-booking"/>
+    <property name="LOGS" value="${LOG_DIR:-./logs}" />
+
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} %highlight(%-5level) [%thread] %cyan(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+
+    <appender name="InfoFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/${applicationName}-info.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+        <encoder><pattern>%d{ISO8601} %-5level [%thread] %logger{36} - %msg%n</pattern></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/archive/${applicationName}-info.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>20KB</maxFileSize><maxHistory>30</maxHistory><totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="ErrorFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOGS}/${applicationName}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>ERROR</level></filter>
+        <encoder><pattern>%d{ISO8601} %-5level [%thread] %logger{36} - %msg%n</pattern></encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOGS}/archive/${applicationName}-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>20KB</maxFileSize><maxHistory>30</maxHistory><totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <logger name="com.restaurant.bookingservice" level="DEBUG"/>
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+
+    <root level="INFO">
+        <appender-ref ref="Console"/>
+        <appender-ref ref="InfoFile"/>
+        <appender-ref ref="ErrorFile"/>
+    </root>
+</configuration>
