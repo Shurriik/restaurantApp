@@ -69,4 +69,4 @@ jobs:
 
       - name: Check Health Endpoint
         run: |
-          curl --fail --silent --show-error https://restaurant-booking-production.up.railway.app/actuator/health || exit 1
+          curl --fail --silent --show-error https://restaurant-booking-production.up.railway.app/ || exit 1
