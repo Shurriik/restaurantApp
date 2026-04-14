@@ -3,9 +3,8 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "java -Dserver.port=$PORT $JAVA_OPTS -jar target/*.jar",
+    "startCommand": "java -Dserver.port=$PORT -jar target/*.jar",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE"
   }
 }
