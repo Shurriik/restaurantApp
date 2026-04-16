@@ -7,6 +7,7 @@ on:
 
 env:
   NODE_VERSION: 20
+  APP_BASE_URL: ${{ vars.RAILWAY_APP_URL }}
 
 jobs:
 
@@ -64,9 +65,25 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for service to start
-        run: sleep 60
-
       - name: Check Health Endpoint
         run: |
-          curl --fail --silent --show-error https://restaurant-booking-production.up.railway.app/ || exit 1
+          BASE_URL="${APP_BASE_URL:-https://restaurant-booking-production.up.railway.app}"
+          HEALTH_URL="${BASE_URL%/}/actuator/health"
+
+          echo "Checking ${HEALTH_URL}"
+
+          for attempt in {1..12}; do
+            status=$(curl --silent --show-error --output response.json --write-out "%{http_code}" "$HEALTH_URL" || true)
+
+            if [ "$status" = "200" ]; then
+              cat response.json
+              exit 0
+            fi
+
+            echo "Attempt ${attempt}/12 returned HTTP ${status}"
+            cat response.json 2>/dev/null || true
+            sleep 15
+          done
+
+          echo "Healthcheck failed for ${HEALTH_URL}"
+          exit 1
