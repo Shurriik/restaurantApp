@@ -20,18 +20,31 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
     useEffect(() => {
         const dialog = dialogRef.current;
 
-        if (isOpen && dialog) {
+        if (!dialog) {
+            return;
+        }
+
+        if (isOpen && !dialog.open) {
             dialog.showModal();
             closeButtonRef.current?.focus();
-            dialog.addEventListener('close', handleClose);
-
-            return () => {
-                dialog.removeEventListener('close', handleClose);
-            };
-        } else if (!isOpen && dialog?.open) {
+        } else if (!isOpen && dialog.open) {
             dialog.close();
         }
-    }, [isOpen, handleClose]);
+    }, [isOpen]);
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+
+        if (!dialog) {
+            return;
+        }
+
+        dialog.addEventListener('close', handleClose);
+
+        return () => {
+            dialog.removeEventListener('close', handleClose);
+        };
+    }, [handleClose]);
 
     const sizes = {
         sm: 'max-w-md',
