@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Check Health Endpoint
         run: |
-          BASE_URL="${APP_BASE_URL:}"
+          BASE_URL="${APP_BASE_URL}"
           HEALTH_URL="${BASE_URL%/}/actuator/health"
 
           echo "Checking ${HEALTH_URL}"
