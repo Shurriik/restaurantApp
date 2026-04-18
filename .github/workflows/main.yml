@@ -2,88 +2,95 @@ name: CI/CD Restaurant Booking
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 env:
-  NODE_VERSION: 20
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/restaurant-booking:latest
   APP_BASE_URL: ${{ vars.RAILWAY_APP_URL }}
 
 jobs:
 
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven'
+          cache: maven
 
-      - name: Build project
-        run: mvn clean compile
+      - name: Build
+        run: mvn -B clean package
 
-      - name: Run Tests
+      - name: Run tests
         run: mvn test
-        continue-on-error: true
 
-  docker-build:
+  docker:
     needs: build-and-test
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
 
-      - name: Log in to Docker Hub
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/restaurant-booking:latest .
+      - name: Build image
+        run: docker build -t $IMAGE_NAME .
 
-      - name: Push Docker image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/restaurant-booking:latest
+      - name: Push image
+        run: docker push $IMAGE_NAME
 
   deploy:
-    needs: docker-build
+    needs: docker
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy to Railway
+      - name: Trigger Railway deploy
         run: |
-          curl -X POST https://api.railway.app/v1/deploy \
+          curl -sS -X POST https://api.railway.app/v1/deploy \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"projectId":"${{ secrets.RAILWAY_PROJECT_ID }}","serviceName":"${{ secrets.RAILWAY_SERVICE_NAME }}"}'
+            -d '{
+              "projectId":"${{ secrets.RAILWAY_PROJECT_ID }}",
+              "serviceName":"${{ secrets.RAILWAY_SERVICE_NAME }}"
+            }'
 
   healthcheck:
     needs: deploy
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check Health Endpoint
+      - name: Check health endpoint
         run: |
-          APP_BASE_URL: ${{ vars.RAILWAY_APP_URL }}
-          HEALTH_URL="${BASE_URL%/}/actuator/health"
+          set -e
 
-          echo "Checking ${HEALTH_URL}"
+          if [ -z "$APP_BASE_URL" ]; then
+            echo "APP_BASE_URL is not set"
+            exit 1
+          fi
 
-          for attempt in {1..12}; do
-            status=$(curl --silent --show-error --output response.json --write-out "%{http_code}" "$HEALTH_URL" || true)
+          HEALTH_URL="${APP_BASE_URL%/}/actuator/health"
 
-            if [ "$status" = "200" ]; then
+          for attempt in {1..20}; do
+            status=$(curl --silent --output response.json --write-out "%{http_code}" "$HEALTH_URL" || true)
+
+            if [ "$status" = "200" ] && grep -q '"status":"UP"' response.json; then
               cat response.json
               exit 0
             fi
 
-            echo "Attempt ${attempt}/12 returned HTTP ${status}"
-            cat response.json 2>/dev/null || true
-            sleep 15
+            sleep 10
           done
 
-          echo "Healthcheck failed for ${HEALTH_URL}"
+          echo "Healthcheck failed: $HEALTH_URL"
+          cat response.json 2>/dev/null || true
           exit 1
