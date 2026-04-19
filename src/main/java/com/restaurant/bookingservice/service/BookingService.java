@@ -404,7 +404,10 @@ public class BookingService {
         for (CompleteBookingRequest request : requests) {
             if (request.getTableId() == 999) {
                 createAndSaveCustomer(request);
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        FORBIDDEN_TABLE_MESSAGE
+                );
             }
             Booking booking = processNormalBooking(request);
             createdBookings.add(bookingMapper.toResponse(booking));
