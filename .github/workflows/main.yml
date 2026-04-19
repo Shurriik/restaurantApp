@@ -2,12 +2,12 @@ name: CI/CD Restaurant Booking
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   workflow_dispatch:
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/restaurant-booking:latest
-  APP_BASE_URL: ${{ vars.RAILWAY_APP_URL }}
+  APP_BASE_URL: ${{ secrets.RAILWAY_APP_URL }}
 
 jobs:
 
@@ -15,33 +15,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
 
-      - name: Build (skip tests)
-        run: mvn -B clean package -DskipTests
+      - name: Build project
+        run: mvn -B clean install
 
-      - name: Run tests (ignore failures)
-        run: mvn -B test || true
-
-      - name: Print test reports
-        run: |
-          if [ -d target/surefire-reports ]; then
-            find target/surefire-reports -type f -name "*.txt" -exec cat {} \;
-          fi
+      - name: Run tests
+        run: mvn -B test
 
   docker:
     needs: build-and-test
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -49,10 +45,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build image
+      - name: Build Docker image
         run: docker build -t $IMAGE_NAME .
 
-      - name: Push image
+      - name: Push Docker image
         run: docker push $IMAGE_NAME
 
   deploy:
@@ -60,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger Railway deploy
+      - name: Deploy to Railway
         run: |
           curl -sS -X POST https://api.railway.app/v1/deploy \
             -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
@@ -75,24 +71,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Wait for app startup
+        run: sleep 60
+
       - name: Check health endpoint
         run: |
-          # Если URL не задан — просто пропускаем шаг
-          if [ -z "$APP_BASE_URL" ]; then
-            echo "APP_BASE_URL is empty, skipping healthcheck"
-            exit 0
-          fi
-
           HEALTH_URL="${APP_BASE_URL%/}/actuator/health"
 
+          echo "Checking $HEALTH_URL"
+
           for attempt in {1..20}; do
-            status=$(curl --silent --output response.json --write-out "%{http_code}" "$HEALTH_URL" || true)
+            status=$(curl --silent --show-error --output response.json --write-out "%{http_code}" "$HEALTH_URL" || true)
 
             if [ "$status" = "200" ] && grep -q '"status":"UP"' response.json; then
+              echo "Service is UP"
               cat response.json
               exit 0
             fi
 
+            echo "Attempt $attempt failed with status $status"
             sleep 10
           done
 
