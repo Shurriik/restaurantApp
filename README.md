@@ -17,4 +17,4 @@
 * Git - контроль версий
 * Checkstyle - проверка стиля кода
 
-# Ссылка на Sonar Cloud - https://sonarcloud.io/project/overview?id=Shurriik_JavaProject
+# Ссылка на Sonar Cloud - https://sonarcloud.io/project/overview?id=Shurriik_restaurantApp
