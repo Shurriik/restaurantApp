@@ -22,6 +22,7 @@ public class AdminBookingService {
 
     private static final String BOOKING_NOT_FOUND_MESSAGE = "Бронирование с ID %d не найдено";
 
+
     private final BookingRepository bookingRepository;
     private final BookingMapper bookingMapper;
 
